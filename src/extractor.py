@@ -53,6 +53,11 @@ async def extract_tool_info_with_ai(video_path: str):
     video_file = None
     
     try:
+        # --- Sanity Check: Ensure the file is a reasonable size ---
+        if os.path.getsize(video_path) < 1000:
+            logger.warning(f"File size of {video_path} is too small! It's likely not a valid video.")
+            return {"tool_name": "Error", "category": "Error", "extracted_content": "Downloaded video file is invalid (too small)."}
+
         logger.info(f"Uploading file: {video_path}...")
         video_file = await asyncio.to_thread(
             genai.upload_file, path=video_path, display_name=os.path.basename(video_path)
