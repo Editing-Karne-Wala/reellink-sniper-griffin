@@ -12,3 +12,4 @@ pillow
 click
 psutil
 apscheduler
+httpx
