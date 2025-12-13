@@ -3,6 +3,8 @@
 old_env.txt
 instagram_cookies.txt
 session.json
+login_local.py
+instagram_session.json
 
 # --- Python Bloat (Don't Upload) ---
 venv/
