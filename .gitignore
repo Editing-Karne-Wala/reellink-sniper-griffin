@@ -1,0 +1,18 @@
+# --- Secrets (NEVER UPLOAD) ---
+.env
+old_env.txt
+instagram_cookies.txt
+session.json
+
+# --- Python Bloat (Don't Upload) ---
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# --- Database & Logs (Local Only) ---
+*.db
+*.sqlite3
+*.log
+downloaded_reels/

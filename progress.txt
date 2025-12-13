@@ -1,0 +1,164 @@
+Summary of Session Progress and Breakthroughs:
+
+**Project:** ReelLink Sniper Telegram Bot
+
+**Goal:** Extract tool names and direct links from social media reels without downloading videos to disk, and without hardcoding links.
+
+**Key Issues & Breakthroughs:**
+
+1.  **"No Download" Challenge & "Unsupported File URI" Error:**
+    *   **Problem:** Initial attempt to process videos directly from URL via Gemini API failed with "Unsupported file uri." Instagram/TikTok URLs are temporary/protected and not directly accessible by Google's servers.
+    *   **Solution (Safety Valve):** Implemented streaming video content to a temporary file (`tempfile.NamedTemporaryFile`) on disk (avoiding RAM overflow) using `httpx`. The file is immediately deleted after processing. This successfully bypassed the Gemini API URL access issue.
+
+2.  **`yt-dlp` Authentication with Instagram:**
+    *   **Problem:** `yt-dlp` failed to extract video URLs from Instagram due to "login required" / "DPAPI" errors.
+    *   **Initial Attempt (Failed):** Using `--cookies-from-browser chrome` was attempted but failed due to Windows DPAPI encryption preventing `yt-dlp` from accessing Chrome's cookie store directly.
+    *   **Solution:** Switched to using a user-provided **`instagram_cookies.txt` file** in Netscape format via the `--cookies` `yt-dlp` flag. This bypassed the DPAPI issue by giving `yt-dlp` explicit, pre-exported cookies.
+
+3.  **Persistent `NameError`s and Environmental Confusion:**
+    *   **Problem:** Faced repeated `NameError`s (`tempfile`, `extract_tool_info_with_ai`, `google_web_search`) despite code appearing correct. This was due to a combination of:
+        *   Incorrect `replace` tool usage on my part leading to mismanaged internal state.
+        *   Deep environmental/caching issues where the running bot process was not picking up the latest code changes.
+    *   **Debugging Tools:** Used `debug_imports.py` extensively to get ground truth on loaded modules and functions.
+    *   **Aggressive Fixes:** Employed forceful process termination (`taskkill`), `bot.pid` deletion, and complete file overwrites (`write_file`) for `src/processor.py` to ensure the latest code was consistently loaded.
+
+4.  **Reliable Search Functionality (The "End Game"):**
+    *   **Problem:** Initial `google_web_search` tool was an agent-specific function, not available to the local script.
+    *   **Attempt (Failed):** Implemented `google_search` using `googlesearch-python` library, which failed due to Google's anti-scraping/rate-limiting mechanisms.
+    *   **Attempt (Failed):** Switched to `duckduckgo-search` library, but it also proved unreliable, returning no results.
+    *   **Final Solution:** Decided to implement the **Google Custom Search JSON API** for programmatic, reliable search.
+        *   User obtained `GOOGLE_API_KEY` and `GOOGLE_CSE_ID`.
+        *   `GOOGLE_API_KEY` and `GOOGLE_CSE_ID` were added to `src/config.py`.
+        *   `src/processor.py` was updated to use `googleapiclient.discovery.build` to call the official Google Custom Search API.
+
+**Current Status:**
+The bot is running with the Google Custom Search API implemented for `find_direct_link`. All known technical hurdles have been addressed, and we are awaiting the next test with the direct search API.
+
+---
+
+**UPDATE: Context-Aware Link Finding (The "Flowchart" Solution)**
+
+**Goal:** Evolve the bot from a simple link finder to a "promise fulfiller" that understands the user's intent based on the reel's content, providing the *most relevant* direct link.
+
+**Problem:** The bot currently identifies the general tool (e.g., "n8n", "ChatGPT") but fails to provide the specific link promised in the reel, such as a GitHub repository or a shared prompt link (e.g., for ChatGPT). This results in a suboptimal user experience where the bot provides the main website when a specific resource was implied.
+
+**The Solution Overview:**
+
+The bot's logic will be refactored to follow a priority-based flowchart, making it context-aware. This involves:
+
+1.  **Evolving the AI Prompt (`src/extractor.py`):**
+    *   The AI will be instructed to return a JSON object with three fields:
+        *   `tool_name`: The name of the software.
+        *   `link_type`: The *category* of the promise (e.g., `Official Website`, `GitHub Repository`, `Shared Content Link`, `App Store`).
+        *   `content_url`: The *exact URL* of the shared content, if visibly displayed in the video.
+    *   This will allow the AI to communicate the "promise" of the reel to the rest of the system.
+
+2.  **Upgrading the Core Processor (`src/processor.py`):**
+    *   The `process_reel` function will be modified to parse this new, richer JSON data from the AI.
+    *   **High-Priority Shortcut:** If a `content_url` is extracted (meaning the AI directly found a specific URL in the video, like a ChatGPT share link), the bot will immediately return that `content_url` as the direct link, bypassing the Google search process entirely. This handles cases where the exact link is shown.
+
+3.  **Implementing Priority-Based Search (`src/processor.py`):**
+    *   If no `content_url` is provided by the AI, the `find_direct_link` function will be called, but it will now accept the `link_type` as an argument.
+    *   Its scoring algorithm will dynamically adjust its priorities based on the `link_type`:
+        *   If `link_type` is `GitHub Repository`, it will heavily boost `github.com` URLs in its search results.
+        *   If `link_type` is `App Store`, it will prioritize `apps.apple.com` and `play.google.com` URLs.
+        *   If `link_type` is `Official Website` (the default/fallback), it will use the existing, refined logic optimized for finding homepages.
+
+**Next Steps (Implementation Plan):**
+
+1.  Update the AI prompt in `src/extractor.py` and modify `extract_tool_info_with_ai` to parse the new JSON output.
+2.  Update `process_reel` in `src/processor.py` to handle the new `tool_name`, `link_type`, and `content_url` from the AI.
+3.  Modify `find_direct_link` in `src/processor.py` to accept and utilize the `link_type` to adjust its scoring logic.
+4.  Test the new context-aware link finding functionality with various reel types.
+
+---
+**LATEST UPDATE**
+
+**Project:** ReelLink Sniper Telegram Bot
+
+**Goal:** Extract tool names and direct links from social media reels.
+
+**Key Problems & Resolutions:**
+
+1.  **Gemini API URL Access:**
+    *   **Problem:** Gemini API failed with "Unsupported file uri" for Instagram/TikTok URLs.
+    *   **Solution:** Implemented a workflow to get the direct video URL with `yt-dlp`, then stream the video content to a temporary local file using `httpx`, and finally upload that file to the Gemini API.
+
+2.  **Instagram Authentication with `yt-dlp`:**
+    *   **Problem:** `yt-dlp` required login for many Instagram reels, and using `--cookies-from-browser` failed due to Windows DPAPI encryption.
+    *   **Solution:** Switched to using a user-provided `instagram_cookies.txt` file in Netscape format, passed to `yt-dlp` via the `--cookies` flag.
+
+3.  **Context-Aware Link Finding (The "Smart Capture" Feature):**
+    *   **Problem:** The bot was only finding generic homepage links, not specific resources like GitHub repos or ChatGPT prompts mentioned in the reels.
+    *   **Solution:** Refactored the core logic.
+        *   The AI prompt in `src/extractor.py` was updated to return a structured JSON object containing `tool_name` and a `category` (e.g., `website`, `github_repo`, `resource`).
+        *   The processing logic in `src/processor.py` now uses this `category` to perform more intelligent, targeted Google searches or, for the "resource" category, to directly display the content transcribed by the AI from the video.
+
+4.  **Bot Instability and "Stuck" Scans:**
+    *   **Problem:** The bot would frequently hang, get "stuck" scanning, or fail with a "critical internal error". This was traced to two root causes.
+        *   **Cause A: Gemini Rate Limiting:** Sending multiple links caused the bot to hit the Gemini API's free tier limit (2 requests/minute), resulting in `429 ResourceExhausted` errors.
+        *   **Cause B: Process & Polling Conflicts:** Attempts to run the bot as a background process were creating "phantom" or "zombie" Python processes. This caused the `python-telegram-bot` library to raise `telegram.error.Conflict` because multiple instances were trying to poll the Telegram API simultaneously.
+    *   **Solution (The "Trifecta of Stability"):**
+        *   **Rate Limiting:** An `asyncio.Semaphore(2)` was added to `src/extractor.py` to create a queue for Gemini API calls, ensuring the bot never exceeds the 2-per-minute limit.
+        *   **Robust Startup:** `main.py` was updated to use the `psutil` library to reliably detect if a bot process is already running, preventing duplicates from starting.
+        *   **Clean Telegram State:** The startup sequence in `src/bot.py` was corrected to use a `post_init` hook that calls `application.bot.delete_webhook()`, ensuring any stale connections on Telegram's side are cleared before the bot starts polling.
+
+5.  **Final Environmental Issue:**
+    *   **Problem:** After aggressively killing all python processes with `taskkill /F /IM python.exe`, the bot began failing on all network requests.
+    *   **Resolution:** A system restart was required to restore Windows networking services to a stable state. Following the restart, a clean run of the bot was successful.
+---
+**SESSION END: PHASE 1 COMPLETE**
+
+**Project:** ReelLink Sniper Telegram Bot
+
+**Goal:** Complete a stable, intelligent prototype for extracting links from social media reels.
+
+**Key Problems & Resolutions during this session:**
+
+1.  **Bot Instability Under Load:**
+    *   **Problem:** Stress-testing the bot with multiple simultaneous reels caused `429 ResourceExhausted` errors from the Gemini API and other `NameError` crashes. The existing `asyncio.Semaphore` was not preventing rate limit errors effectively.
+    *   **Solution:** The entire processing pipeline in `src/processor.py` was refactored to be more robust and linear, ensuring all necessary modules were imported correctly. This fixed the `NameError` exceptions and made the rate-limiting more reliable.
+
+2.  **Intelligent Link-Finding Regression:**
+    *   **Problem:** The bot was no longer correctly prioritizing GitHub links over general websites (e.g., for `n8n`). The logic was too simplistic and relied entirely on the AI's `category` output.
+    *   **Solution:** The `find_direct_link` function was upgraded to an intelligent "Router". It now uses a scoring system that analyzes all Google Search results, giving boosts to links that match the category hint (`github.com`, app stores) and penalizing social media links. This makes link selection resilient to minor AI miscategorization.
+
+3.  **Formatting and UX Bugs:**
+    *   **Problem:** The bot was sending messages with literal `\n` characters instead of actual newlines.
+    *   **Solution:** Corrected the string formatting in `src/processor.py` from `\\n` to `\n` to ensure proper message rendering in Telegram.
+
+**Final Status (Phase 1 Conclusion):**
+The bot has now passed stress tests and correctly handles a variety of reel types (GitHub repos, websites, resources) with the intelligent routing logic. The core features for a functional prototype are complete. The project is ready for Phase 2, which will focus on monetization features like the affiliate link database.
+
+---
+**SESSION END: 13-12-2025**
+
+**Goal:** Implement a headless Instagram login refresher to automatically update `instagram_cookies.txt`.
+
+**Key Problems & Resolutions during this session:**
+
+1.  **`pydantic-core` Compilation Error:**
+    *   **Problem:** Installing `instagrapi` failed because its dependency, `pydantic`, required a version of `pydantic-core` that needed the Rust compiler on Windows.
+    *   **Solution:** After several attempts, the issue was resolved by installing `instagrapi==2.2.1` with `--no-deps`, then manually installing its other dependencies and a newer `pydantic` version (`2.12.5`) that had pre-compiled wheels.
+
+2.  **`python-telegram-bot` v20+ Migration:**
+    *   **Problem:** Multiple startup crashes due to breaking changes in the library.
+    *   **Solution:** Systematically fixed a series of `ImportError`, `TypeError`, and `AttributeError`s related to `AIORateLimiter` and `Application` methods, bringing the code up to date with the library's new API.
+
+3.  **Persistent `.env` Loading Failure:**
+    *   **Problem:** The `TELEGRAM_BOT_TOKEN` was not being loaded correctly from the `.env` file, with debugging showing that the placeholder value was being loaded instead. This was traced to `os.environ` already having the placeholder value before the script ran.
+    *   **Solution:** After `python-decouple` also failed to resolve the issue, the definitive solution was to switch back to `python-dotenv` and use `load_dotenv(override=True)`, forcing the `.env` file's values to take precedence over any conflicting system-level environment variables.
+
+4.  **`instagrapi` Cookie Extraction:**
+    *   **Problem:** The `refresh_session()` function was crashing when trying to extract cookies from the `instagrapi.Client` object for conversion to Netscape format, due to a constantly changing internal API.
+    *   **Status:** Awaiting final fix. The function's cookie-generation logic is currently commented out in `main.py`'s startup sequence to allow the bot to run, relying on a manually provided `instagram_cookies.txt`.
+
+5.  **Gemini API Quota Error:**
+    *   **Problem:** The bot was receiving `429 Quota Exceeded` errors because it was trying to use the `gemini-2.5-pro` model, for which the user's free tier quota was zero.
+    *   **Solution:** Changed the model in `src/extractor.py` to `gemini-2.5-flash`, a model for which the user confirmed they have a valid quota.
+
+**Final Status (End of Session):**
+*   The bot is **fully functional and running in the background**. The core features are stable.
+*   The `.env` loading and Telegram integration are now robust.
+*   The `instagrapi` automatic cookie refresh is the last major bug to be fixed in the next session.
+*   New ideas for a public rollout, such as the "Multi-Link" feature, have been proposed.
