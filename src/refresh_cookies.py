@@ -32,6 +32,11 @@ def convert_to_netscape_format(cookie_jar_from_requests):
     return "\n".join(lines)
 
 def refresh_session() -> bool: # Added type hint for clarity
+    # --- Pre-flight check for credentials ---
+    if not all([USERNAME, PASSWORD, TOTP_SEED]):
+        print("ERROR: Instagram credentials (IG_USERNAME, IG_PASSWORD, IG_TOTP_SEED) are not set in your environment. Cannot refresh session.")
+        return False
+        
     cl = Client()
     
     # 1. Set Proxy (CRITICAL for DigitalOcean)
