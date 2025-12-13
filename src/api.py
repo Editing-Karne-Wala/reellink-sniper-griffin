@@ -1,23 +1,40 @@
 from fastapi import FastAPI
 import threading
+import asyncio # New import for handling async in thread
 import os
+import sys
+
+# --- Path Correction ---
+# Add the project's root directory to the Python path.
+# This allows us to import the 'src.bot' module from the parent directory.
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(project_root)
+# =======================
+
+from src.bot import main as bot_main # Import the actual async bot's main function
 
 app = FastAPI()
 
-# 1. The "Fake Website" Endpoint
-# This tells Render: "Yes, I am alive! Don't kill me."
-@app.get("/")
-def health_check():
-    return {"status": "active", "service": "ReelLink Sniper"}
+# Wrapper to create a new event loop for the thread and run the async bot
+def run_bot_in_thread():
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    print("🚀 Starting the Sniper Bot's async polling loop in background thread...")
+    loop.run_until_complete(bot_main()) # Now bot_main() is an awaitable
 
-# 2. The Background Worker
-# This runs your REAL bot (main.py) in a separate thread.
-def run_bot():
-    print("🚀 Starting the Sniper Bot in background...")
-    os.system("python main.py")
-
-# 3. Start the bot when the server starts
 @app.on_event("startup")
 def startup_event():
-    # daemon=True means if the server dies, the bot dies (clean exit)
-    threading.Thread(target=run_bot, daemon=True).start()
+    """
+    On server startup, create and start the bot's thread.
+    The 'daemon=True' flag ensures the thread will exit when the main server process exits.
+    """
+    thread = threading.Thread(target=run_bot_in_thread, daemon=True)
+    thread.start()
+
+@app.get("/")
+def health_check():
+    """
+    A simple health check endpoint that Render can ping to make sure
+    the web service is alive.
+    """
+    return {"status": "active", "service": "ReelLink Sniper API wrapper"}

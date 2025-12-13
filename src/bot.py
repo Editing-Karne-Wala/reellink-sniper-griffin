@@ -192,7 +192,7 @@ async def post_init(application: Application) -> None:
     logger.info("post_init complete. Ready to start polling.")
 
 
-def main() -> None:
+async def main() -> None:
     """Start the bot."""
     if not TELEGRAM_BOT_TOKEN:
         logger.error("Error: TELEGRAM_BOT_TOKEN not found in environment variables. Please set it in your .env file.")
@@ -221,11 +221,11 @@ def main() -> None:
     # Run the bot until the user presses Ctrl-C
     logger.info("Bot started. Press Ctrl-C to stop.")
     try:
-        application.run_polling(allowed_updates=Update.ALL_TYPES)
+        await application.run_polling(allowed_updates=Update.ALL_TYPES)
     finally:
         # Ensure the bot is stopped gracefully
         if application.running:
-            asyncio.run(application.stop())
+            await application.stop()
 
 if __name__ == "__main__":
     main()
