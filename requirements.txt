@@ -1,6 +1,6 @@
 fastapi
 uvicorn
-python-telegram-bot
+python-telegram-bot[rate-limiter]
 google-generativeai
 instagrapi
 yt-dlp
