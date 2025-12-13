@@ -221,7 +221,7 @@ async def main() -> None:
     # Run the bot until the user presses Ctrl-C
     logger.info("Bot started. Press Ctrl-C to stop.")
     try:
-        await application.run_polling(allowed_updates=Update.ALL_TYPES)
+        await application.run_polling(allowed_updates=Update.ALL_TYPES, stop_signals=None)
     finally:
         # Ensure the bot is stopped gracefully
         if application.running:
