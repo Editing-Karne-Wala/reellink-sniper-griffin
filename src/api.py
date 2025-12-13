@@ -15,26 +15,66 @@ from src.bot import main as bot_main # Import the actual async bot's main functi
 
 app = FastAPI()
 
-# Wrapper to create a new event loop for the thread and run the async bot
-def run_bot_in_thread():
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    print("🚀 Starting the Sniper Bot's async polling loop in background thread...")
-    loop.run_until_complete(bot_main()) # Now bot_main() is an awaitable
+# Wrapper to create a new event loop for the thread
+
+def start_bot_in_thread():
+
+    """Runs the async bot main function in a dedicated thread loop."""
+
+    try:
+
+        # Create a new event loop for this thread (critical for async bot!)
+
+        loop = asyncio.new_event_loop()
+
+        asyncio.set_event_loop(loop)
+
+        
+
+        # Run the bot
+
+        loop.run_until_complete(bot_main())
+
+        loop.close()
+
+    except Exception as e:
+
+        print(f"⚠️ Bot thread crashed: {e}")
+
+
 
 @app.on_event("startup")
+
 def startup_event():
+
     """
+
     On server startup, create and start the bot's thread.
+
     The 'daemon=True' flag ensures the thread will exit when the main server process exits.
+
     """
-    thread = threading.Thread(target=run_bot_in_thread, daemon=True)
-    thread.start()
+
+    print("🚀 Starting Bot in background thread...")
+
+    bot_thread = threading.Thread(target=start_bot_in_thread, daemon=True)
+
+    bot_thread.start()
+
+
 
 @app.get("/")
+
 def health_check():
+
     """
+
     A simple health check endpoint that Render can ping to make sure
+
     the web service is alive.
+
     """
+
     return {"status": "active", "service": "ReelLink Sniper API wrapper"}
+
+
