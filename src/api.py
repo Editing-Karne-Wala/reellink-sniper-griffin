@@ -17,20 +17,21 @@ app = FastAPI()
 
 # Wrapper to create a new event loop for the thread
 def start_bot_in_thread():
-    """Runs the bot main function in a dedicated thread."""
+    """Runs the bot main coroutine in a dedicated thread loop."""
     try:
         # 1. Create a fresh loop for this thread
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         
-        # 2. Call bot_main() DIRECTLY (Not inside run_until_complete)
-        # Why? Because bot_main() uses run_polling(), which is a BLOCKING call.
-        # It handles the loop internally. We don't need to wrap it.
-        bot_main() 
+        # 2. Use run_until_complete() to correctly start the bot's async function.
+        # This handles the coroutine property and starts the polling.
+        loop.run_until_complete(bot_main())
+        
+        # 3. CRITICAL: Do NOT include loop.close()
+        # This prevents the previous crash, letting the thread die naturally.
         
     except Exception as e:
         print(f"⚠️ Bot thread crashed: {e}")
-    # 3. No loop.close() here! Let it die naturally with the thread.
 
 
 
