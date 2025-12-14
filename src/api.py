@@ -17,33 +17,21 @@ app = FastAPI()
 
 # Wrapper to create a new event loop for the thread
 
-def run_bot_worker_V2():
+def run_bot_worker_V3():
 
-    """Runs the bot main coroutine in a dedicated thread loop."""
+    """
+
+    Runs the bot main coroutine using the high-level asyncio.run().
+
+    This is a simpler and potentially more robust way to run the async
+
+    bot in a separate thread.
+
+    """
 
     try:
 
-        # 1. Create a fresh loop for this thread
-
-        loop = asyncio.new_event_loop()
-
-        asyncio.set_event_loop(loop)
-
-        
-
-        # 2. Use run_until_complete() to correctly start the bot's async function.
-
-        # This handles the coroutine property and starts the polling.
-
-        loop.run_until_complete(bot_main())
-
-        
-
-        # 3. CRITICAL: Do NOT include loop.close()
-
-        # This prevents the previous crash, letting the thread die naturally.
-
-        
+        asyncio.run(bot_main())
 
     except Exception as e:
 
@@ -69,7 +57,7 @@ def startup_event():
 
     print("🚀 Starting Bot in background thread...")
 
-    bot_thread = threading.Thread(target=run_bot_worker_V2, daemon=True) # Updated call
+    bot_thread = threading.Thread(target=run_bot_worker_V3, daemon=True) # Updated call
 
     bot_thread.start()
 
