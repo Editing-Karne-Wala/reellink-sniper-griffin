@@ -15,23 +15,23 @@ from src.bot import main as bot_main # Import the actual async bot's main functi
 
 app = FastAPI()
 
-# Wrapper to create a new event loop for the thread
-
-def run_bot_worker_V3():
+def run_bot_worker_FINAL():
 
     """
 
-    Runs the bot main coroutine using the high-level asyncio.run().
+    Runs the bot main coroutine in a dedicated thread using a manually
 
-    This is a simpler and potentially more robust way to run the async
-
-    bot in a separate thread.
+    created event loop. This is the correct pattern for this threaded environment.
 
     """
 
     try:
 
-        asyncio.run(bot_main())
+        loop = asyncio.new_event_loop()
+
+        asyncio.set_event_loop(loop)
+
+        loop.run_until_complete(bot_main())
 
     except Exception as e:
 
@@ -51,13 +51,11 @@ def startup_event():
 
     On server startup, create and start the bot's thread.
 
-    The 'daemon=True' flag ensures the thread will exit when the main server process exits.
-
     """
 
     print("🚀 Starting Bot in background thread...")
 
-    bot_thread = threading.Thread(target=run_bot_worker_V3, daemon=True) # Updated call
+    bot_thread = threading.Thread(target=run_bot_worker_FINAL, daemon=True) # Updated call
 
     bot_thread.start()
 
