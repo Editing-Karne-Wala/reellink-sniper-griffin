@@ -1,78 +1,41 @@
 from fastapi import FastAPI
-import threading
-import asyncio # New import for handling async in thread
+from concurrent.futures import ThreadPoolExecutor
+import asyncio
 import os
 import sys
 
 # --- Path Correction ---
-# Add the project's root directory to the Python path.
-# This allows us to import the 'src.bot' module from the parent directory.
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(project_root)
 # =======================
 
-from src.bot import main as bot_main # Import the actual async bot's main function
+from src.bot import main as bot_main # Import the now-synchronous bot_main
 
 app = FastAPI()
 
-def run_bot_worker_FINAL():
-
-    """
-
-    Runs the bot main coroutine in a dedicated thread using a manually
-
-    created event loop. This is the correct pattern for this threaded environment.
-
-    """
-
-    try:
-
-        loop = asyncio.new_event_loop()
-
-        asyncio.set_event_loop(loop)
-
-        loop.run_until_complete(bot_main())
-
-    except Exception as e:
-
-        print(f"⚠️ Bot thread crashed: {e}")
-
-
-
-
-
-
+# Define a thread pool executor for running the blocking bot code
+executor = ThreadPoolExecutor(max_workers=1)
 
 @app.on_event("startup")
-
-def startup_event():
-
+async def startup_event():
     """
-
-    On server startup, create and start the bot's thread.
-
+    On server startup, schedule the synchronous bot_main() function 
+    to run in the background thread provided by the executor.
     """
-
-    print("🚀 Starting Bot in background thread...")
-
-    bot_thread = threading.Thread(target=run_bot_worker_FINAL, daemon=True) # Updated call
-
-    bot_thread.start()
-
-
+    print("🚀 Starting Bot as a background Executor task...")
+    
+    # Get the event loop that Uvicorn is already running
+    loop = asyncio.get_running_loop()
+    
+    # Schedule the blocking function to run in the executor
+    loop.run_in_executor(executor, bot_main)
 
 @app.get("/")
-
 def health_check():
-
     """
-
     A simple health check endpoint that Render can ping to make sure
-
     the web service is alive.
-
     """
-
     return {"status": "active", "service": "ReelLink Sniper API wrapper"}
 
 

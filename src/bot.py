@@ -192,7 +192,7 @@ async def post_init(application: Application) -> None:
     logger.info("post_init complete. Ready to start polling.")
 
 
-async def main() -> None:
+def main() -> None:
     """Start the bot."""
     if not TELEGRAM_BOT_TOKEN:
         logger.error("Error: TELEGRAM_BOT_TOKEN not found in environment variables. Please set it in your .env file.")
@@ -221,11 +221,15 @@ async def main() -> None:
     # Run the bot until the user presses Ctrl-C
     logger.info("Bot started. Press Ctrl-C to stop.")
     try:
-        await application.run_polling(allowed_updates=Update.ALL_TYPES, stop_signals=None, close_loop=False)
+        # This is a blocking call
+        application.run_polling(allowed_updates=Update.ALL_TYPES, stop_signals=None, close_loop=False)
     finally:
-        # Ensure the bot is stopped gracefully
+        # This part might not be reached in a daemonized executor context,
+        # but it's good practice to have.
         if application.running:
-            await application.stop()
+            # In a non-async context, we can't await this.
+            # The executor shutdown will handle this.
+            pass
 
 if __name__ == "__main__":
     main()
