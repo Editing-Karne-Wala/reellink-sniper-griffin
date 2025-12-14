@@ -1,31 +1,3 @@
-import os
-import json
-
-# === START COOKIE SETUP ===
-if os.getenv("IG_COOKIES_JSON"):
-    print("🍪 Found cookie data in Env Var!")
-    
-    # 1. Save JSON File (for Instagrapi)
-    # The bot likely looks for 'instagram_cookies.txt' or 'session.json' depending on your config.
-    # We'll save the JSON to 'session.json' to be safe.
-    raw_json = os.getenv("IG_COOKIES_JSON")
-    with open("session.json", "w") as f:
-        f.write(raw_json)
-        
-    # 2. Convert to Netscape File (for yt-dlp)
-    # We write this to 'instagram_cookies.txt' because that's likely what your downloader expects.
-    try:
-        data = json.loads(raw_json)
-        cookies = data.get("cookies", {})
-        with open("instagram_cookies.txt", "w") as f:
-            f.write("# Netscape HTTP Cookie File\n")
-            for name, value in cookies.items():
-                f.write(f".instagram.com\tTRUE\t/\tTRUE\t2147483647\t{name}\t{value}\n")
-        print("✅ Created instagram_cookies.txt (Netscape format) for yt-dlp.")
-    except Exception as e:
-        print(f"⚠️ Cookie conversion failed: {e}")
-# === END COOKIE SETUP ===
-
 import logging
 import sys
 import atexit
