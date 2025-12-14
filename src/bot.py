@@ -222,7 +222,7 @@ def main() -> None:
     logger.info("Bot started. Press Ctrl-C to stop.")
     try:
         # This is a blocking call
-        application.run_polling(allowed_updates=Update.ALL_TYPES, stop_signals=None, close_loop=False)
+        application.run_polling(allowed_updates=Update.ALL_TYPES, stop_signals=None, close_loop=False, poll_interval=5)
     finally:
         # This part might not be reached in a daemonized executor context,
         # but it's good practice to have.
